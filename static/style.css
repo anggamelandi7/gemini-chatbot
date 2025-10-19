@@ -1,77 +1,268 @@
-body {
-  font-family: Arial, sans-serif;
-  background-color: #f0f2f5;
+/* ===== Base & Layout ===== */
+:root{
+  --bg: #0f1220;
+  --panel: rgba(255,255,255,0.08);
+  --panel-strong: rgba(255,255,255,0.12);
+  --text: #e9ecf1;
+  --muted: #b8c1d1;
+  --brand: #ff7a18;
+  --brand-2: #ffb86b;
+  --accent: #6ae3ff;
+  --success: #37d67a;
+
+  --radius: 16px;
+  --shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+
+/* Light mode fallback; auto switch ke dark bila OS dark */
+@media (prefers-color-scheme: light) {
+  :root{
+    --bg: #f5f7fb;
+    --panel: rgba(255,255,255,0.85);
+    --panel-strong: rgba(255,255,255,1);
+    --text: #1e2430;
+    --muted: #5b6576;
+    --brand: #ff7a18;
+    --brand-2: #ffb86b;
+    --accent: #0ea5e9;
+    --success: #16a34a;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
   margin: 0;
-  padding: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(255,122,24,.18), transparent 60%),
+    radial-gradient(1000px 500px at 110% 10%, rgba(106,227,255,.18), transparent 60%),
+    linear-gradient(180deg, var(--bg), var(--bg));
+  color: var(--text);
 }
 
+/* Container optional: gunakan jika kamu membungkus form & chat dalam .container */
 .container {
-  max-width: 600px;
-  margin: 40px auto;
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 760px;
+  margin: clamp(16px, 4vw, 40px) auto;
+  padding: clamp(12px, 2vw, 20px);
 }
 
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
+/* Panel utama chat */
+.chat-panel {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 12px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  min-height: min(70vh, 760px);
+  overflow: hidden;
 }
 
-.chat-box {
-  height: 400px;
-  overflow-y: auto;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: #fafafa;
-  margin-bottom: 10px;
-}
-
-.message {
-  margin: 8px 0;
-  padding: 8px 12px;
-  border-radius: 20px;
-  max-width: 80%;
-  display: inline-block;
-}
-
-.message.user {
-  background-color: #d1e7ff;
-  float: right;
-  text-align: right;
-}
-
-.message.bot {
-  background-color: #dff6dd;
-  float: left;
-  text-align: left;
-}
-
-form {
+/* ===== Header (opsional) ===== */
+.chat-header {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(255,122,24,.18), rgba(106,227,255,.18));
+  border-bottom: 1px solid rgba(255,255,255,.08);
   display: flex;
+  align-items: center;
   gap: 10px;
 }
+.chat-header .dot {
+  width: 10px; height: 10px; border-radius: 999px; background: var(--success);
+  box-shadow: 0 0 0 3px rgba(55,214,122,.15);
+}
+.chat-title {
+  font-weight: 600;
+  letter-spacing: .2px;
+}
 
-input[type="text"] {
+/* ===== Chat Box ===== */
+#chat-box {
+  padding: 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Scrollbar nice */
+#chat-box::-webkit-scrollbar { width: 10px; }
+#chat-box::-webkit-scrollbar-track { background: transparent; }
+#chat-box::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.2);
+  border-radius: 999px;
+}
+#chat-box:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.35); }
+
+/* ===== Message Bubble ===== */
+.message {
+  max-width: 78%;
+  width: fit-content;
+  line-height: 1.45;
+  padding: 12px 14px;
+  border-radius: 14px;
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  animation: bubble-in .18s ease-out both;
+  box-shadow: 0 6px 18px rgba(0,0,0,.12);
+}
+
+/* Bot bubble */
+.message.bot{
+  align-self: flex-start;
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+/* User bubble (brand gradient) */
+.message.user{
+  align-self: flex-end;
+  color: #0b0f18;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  border: 0;
+}
+
+/* Tail */
+.message.bot::after,
+.message.user::after{
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  width: 10px; height: 10px;
+  transform: rotate(45deg);
+}
+.message.bot::after{
+  left: 12px;
+  background: inherit;
+  border-left: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.message.user::after{
+  right: 12px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+}
+
+/* Avatar pseudo (emoji) — tidak butuh HTML tambahan */
+.message.bot::before,
+.message.user::before{
+  position: absolute;
+  top: -18px;
+  font-size: 12px;
+  opacity: .9;
+}
+.message.bot::before{
+  content: "🤖";
+  left: 4px;
+}
+.message.user::before{
+  content: "🧑";
+  right: 4px;
+}
+
+/* Micro meta (opsional gunakan class .meta di script jika mau timestamp) */
+.message .meta{
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: .7;
+}
+
+/* ===== Typing / Thinking state ===== */
+.message.bot.thinking{
+  position: relative;
+}
+.message.bot.thinking::after{
+  /* tail tetap tampil via ::after bubble – sudah didefinisikan di atas */
+}
+.typing {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.typing .dot {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: currentColor;
+  opacity: .6;
+  animation: blink 1.2s infinite ease-in-out;
+}
+.typing .dot:nth-child(2){ animation-delay: .15s; }
+.typing .dot:nth-child(3){ animation-delay: .3s; }
+
+@keyframes blink{
+  0%, 80%, 100% { opacity: .25; transform: translateY(0); }
+  40% { opacity: .9; transform: translateY(-2px); }
+}
+
+@keyframes bubble-in{
+  from { transform: translateY(4px) scale(.98); opacity: 0; }
+  to   { transform: translateY(0)   scale(1);    opacity: 1; }
+}
+
+/* ===== Composer / Form ===== */
+#chat-form{
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background: var(--panel-strong);
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+#user-input{
   flex: 1;
-  padding: 10px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  font-size: 16px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  outline: none;
+  transition: box-shadow .2s, border-color .2s, background .2s;
+}
+#user-input::placeholder{ color: var(--muted); }
+#user-input:focus{
+  border-color: rgba(255,255,255,.28);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.12);
+  background: rgba(255,255,255,.08);
 }
 
-button {
-  padding: 10px 20px;
-  border: none;
-  background-color: #0d6efd;
-  color: white;
-  border-radius: 20px;
-  font-size: 16px;
+button[type="submit"]{
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #0b0f18;
+  font-weight: 600;
+  letter-spacing: .2px;
   cursor: pointer;
+  box-shadow: 0 8px 20px rgba(255,122,24,.25);
+  transition: transform .06s ease, box-shadow .2s ease, filter .2s ease;
+}
+button[type="submit"]:hover{
+  box-shadow: 0 10px 26px rgba(255,122,24,.35);
+  filter: brightness(1.02);
+}
+button[type="submit"]:active{
+  transform: translateY(1px);
 }
 
-button:hover {
-  background-color: #0b5ed7;
+/* Disabled state */
+button[disabled], #user-input[disabled]{
+  opacity: .7;
+  cursor: not-allowed;
+}
+
+/* ===== Utilities ===== */
+.hidden{ display: none !important; }
+
+/* Small screens */
+@media (max-width: 520px){
+  .message{ max-width: 88%; }
+  #chat-form{ gap: 8px; }
+  button[type="submit"]{ padding: 11px 14px; }
 }
