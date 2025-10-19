@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 /*==========================================
 Inisialisasi aplikasi
 ============================================*/
@@ -21,7 +22,11 @@ Inisialisasi aplikasi
 
 const app = express();
 const upload = multer();
-const ai = new GoogleGenAI({}); //instantiation object instance (OOP)
+
+// inisialisasi object instance GoogleGenAI
+const ai = new GoogleGenAI({
+  apiKey: process.env.GOOGLE_API_KEY,
+}); //instantiation object instance (OOP)
 
 /* =========================================
 penambahan path
@@ -42,11 +47,39 @@ inisialisasi static directory
 app.use(express.static(path.join(__dirname, "static"))); //rootDirectory
 
 /*==========================================
+Helper: ekstrak teks dari response @google/genai
+============================================*/
+function extractText(aiResponse) {
+  try {
+    // ambil teks dari struktur candidates
+    const parts =
+      aiResponse?.candidates?.[0]?.content?.parts?.map((p) => p?.text || "") ||
+      [];
+    const combined = parts.join("").trim();
+    if (combined) return combined;
+
+    // fallback ke fungsi text() jika tersedia
+    if (typeof aiResponse?.text === "function") {
+      return aiResponse.text() || "";
+    }
+
+    // fallback ke properti text biasa
+    if (typeof aiResponse?.text === "string") {
+      return aiResponse.text;
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+/*==========================================
 inisialisasi routing
 ============================================*/
 //contoh app.get() , app.post(), dll -- get/post/put itu bagaian standart dari HTTP
 
-//GET, PUT, POST, PATCHM DELTE, OPTIONS, HEAD
+//GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD
 //
 //secara penulisannua
 //function biasa --> function namaFuction() {}
@@ -57,16 +90,15 @@ inisialisasi routing
 //synchronous -- ()=> {}
 //[*] asynchronous --> async () =>{}
 
-app.post("/generate-text", async (req, res) => {
+app.post("/generate-text", upload.none(), async (req, res) => {
   //terima jeroaanya, lalu cek di disini
 
-  const { prompt } = req.body; //destructuring
+  const { prompt } = req.body || {}; //destructuring
 
   //guard clouse (kasarnya, satpam)
-
   if (!prompt || typeof prompt !== "string") {
-    res.status(400).json({
-      succes: false,
+    return res.status(400).json({
+      success: false,
       message: "Prompt harus berupa string!",
       data: null,
     });
@@ -75,22 +107,30 @@ app.post("/generate-text", async (req, res) => {
   //jeroannya
   try {
     const aiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ text: prompt }],
+      model: "gemini-2.5-flash", 
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
       config: {
         systemInstruction: "Harus dibalas dalam bahasa Indonesia",
       },
     });
-    res.status(200).json({
-      succes: true,
+
+    const text = extractText(aiResponse);
+
+    return res.status(200).json({
+      success: true,
       message: "Berhasil dijawab oleh Gemini",
-      data: aiResponse.text,
+      data: text,
     });
   } catch (e) {
     console.log(e);
-    res.status(500).json({
-      succes: false,
-      message: "Gagal , server lagi bermasalah!",
+    return res.status(500).json({
+      success: false,
+      message: e?.message || "Gagal, server lagi bermasalah!",
       data: null,
     });
   }
@@ -99,8 +139,8 @@ app.post("/generate-text", async (req, res) => {
 /*=====================================
 Fitur Chat : endpoint : POST /api/chat
 =========================================*/
-app.post("/api/chat", async (req, res) => {
-  const { conversation } = req.body;
+app.post("/api/chat", upload.none(), async (req, res) => {
+  const { conversation } = req.body || {};
 
   try {
     //security #1 :cek conversation apakah berupa array atau tidak
@@ -110,7 +150,6 @@ app.post("/api/chat", async (req, res) => {
     }
 
     //security #2 :cek setiap pesan dalam conversation apakah valid atau tidak
-    // dengan Array.isArray().
     let messageIsValid = true;
 
     if (conversation.length === 0) {
@@ -129,8 +168,8 @@ app.post("/api/chat", async (req, res) => {
         ["text", "role"].includes(key)
       );
 
-      //#kondisi 2 -- massage harus memliki struktur yang valid
-      if (keys.length !== 2 || objectHasValidKeys) {
+      //#kondisi 2 -- message harus memliki struktur yang valid
+      if (keys.length !== 2 || !objectHasValidKeys) {
         messageIsValid = false;
         return;
       }
@@ -154,37 +193,30 @@ app.post("/api/chat", async (req, res) => {
     }
 
     //mapping contents
-
-    const contents = conversation.map(({role, text}) =>({
+    const contents = conversation.map(({ role, text }) => ({
       role,
-      parts:[(text)]
+      parts: [{ text }],
     }));
 
     const aiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash", 
       contents,
-      config:{
-        systemInstruction: "Harus dibalas dalam bahasa Indonesia"
-      }
-    })
+      config: {
+        systemInstruction: "Harus dibalas dalam bahasa Indonesia",
+      },
+    });
 
-    res.status(200).json({
-      succes: true,
+    const text = extractText(aiResponse);
+
+    return res.status(200).json({
+      success: true,
       message: "Berhasil dijawab oleh Gemini",
-      data: aiResponse.text,
+      data: text,
     });
-
-    res.status(500).json({
-      succes: false,
-      message: e.message,
-      data: null,
-    });
-
   } catch (e) {
-    console.log(e);
-    res.status(400).json({
+    return res.status(500).json({
       success: false,
-      message: "Conversation harus berupa array",
+      message: e?.message || "Gagal, server lagi bermasalah!",
       data: null,
     });
   }
